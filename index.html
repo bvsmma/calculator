@@ -27,16 +27,15 @@
   }
 
   .video-background {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    min-width: 100%;
-    min-height: 100%;
-    width: auto;
-    height: auto;
-    z-index: -100;
-    transform: translateX(-50%) translateY(-50%);
-  }
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Обеспечивает покрытие всей области без искажений */
+  z-index: -100;
+}
+
 
   .main-content {
     display: flex;
@@ -125,6 +124,18 @@
   .screen::-webkit-scrollbar{ width:8px; }
   .screen::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius:6px; }
   .screen::-webkit-scrollbar-track{ background: transparent; }
+
+  /* Media query for mobile devices */
+  @media (max-width: 768px) {
+    .video-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
 </style>
 </head>
 <body>
@@ -312,4 +323,3 @@ enableButtonSounds();
 </script>
 </body>
 </html>
-
