@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kalkulator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --screen-font: 2.5rem;
+    --line-mult: 1.2;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #000;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content:space-between;
+    min-height:100vh;
+    margin:0;
+    color:#fff;
+    position: relative;
+  }
+
+  .video-background {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    z-index: -100;
+    transform: translateX(-50%) translateY(-50%);
+  }
+
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    padding: 20px 0;
+  }
+
+  .header {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .calculator {
+    background: rgba(255,255,255,0.16);
+    backdrop-filter: blur(8px);
+    border-radius:18px;
+    padding:20px;
+    width:360px;
+    max-width:94%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.12);
+    z-index: 10;
+  }
+
+  .footer {
+    font-size: 0.8rem;
+    font-weight: 400;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  }
+
+  .screen {
+    font-size: var(--screen-font);
+    line-height: var(--line-mult);
+    padding:15px;
+    border-radius:10px;
+    background: rgba(255,255,255,0.08);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
+    color: #fff;
+    text-align: right;
+    margin-bottom:18px;
+    display:block;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    overflow-x: hidden;
+    word-break: break-word;
+    transition: max-height 220ms ease;
+    box-sizing: border-box;
+    max-height: calc(var(--screen-font) * var(--line-mult) * 1 + 30px);
+    scroll-behavior: smooth;
+  }
+
+  .buttons {
+    display:grid;
+    grid-template-columns: repeat(4,1fr);
+    gap:12px;
+  }
+
+  .button {
+    padding:16px;
+    border-radius:12px;
+    background: rgba(255,255,255,0.14);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:1.2rem;
+    font-weight:600;
+    cursor:pointer;
+    user-select:none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+    transition: transform .12s ease, background .12s ease;
+  }
+  .button:hover{ transform: translateY(-3px); background: rgba(255,255,255,0.22); }
+  .button:active{ transform: translateY(0); }
+  .button.operator{ background: rgba(255,255,255,0.2); }
+  .button.equals{ background: rgba(255,255,255,0.34); }
+  .button.zero{ grid-column: span 2; }
+
+  .screen::-webkit-scrollbar{ width:8px; }
+  .screen::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius:6px; }
+  .screen::-webkit-scrollbar-track{ background: transparent; }
+</style>
+</head>
+<body>
+  <video autoplay loop muted playsinline class="video-background">
+    <source src="video/background.mp4" type="video/mp4">
+    <!-- Hvis nettleseren ikke støtter video -->
+    Din nettleser støtter ikke video.
+  </video>
+
+  <h1 class="header">Kalkulator</h1>
+
+  <div class="main-content">
+    <div class="calculator">
+      <div id="screen" class="screen" tabindex="0">0</div>
+      <div id="buttons" class="buttons"></div>
+    </div>
+  </div>
+
+  <p class="footer">
+    © 2025 Vladislav Bieliaiev
+  </p>
+
+<script>
+/* ========== KALKULATOR LOGIKK ========== */
+const screen = document.getElementById('screen');
+const buttonsContainer = document.getElementById('buttons');
+
+let currentInput = '';
+let result = null;
+let isCalculated = false;
+
+const buttonsLayout = [
+  'C','/','*','-',
+  '7','8','9','+',
+  '4','5','6','(',
+  '1','2','3',')',
+  '0','.','='
+];
+
+function createButtons(){
+  buttonsLayout.forEach(btn=>{
+    const d = document.createElement('div');
+    d.className = 'button';
+    if (['/','*','-','+'].includes(btn)) d.classList.add('operator');
+    if (btn === '=') d.classList.add('equals');
+    if (btn === 'C') d.classList.add('clear');
+    if (btn === '0') d.classList.add('zero');
+    d.textContent = btn;
+
+    if (btn === '=') d.onclick = calculateResult;
+    else if (btn === 'C') d.onclick = clearScreen;
+    else d.onclick = () => appendToScreen(btn);
+
+    buttonsContainer.appendChild(d);
+  });
+}
+
+function isOperator(ch){ return ['+','-','*','/'].includes(ch); }
+
+function appendToScreen(value){
+  if (isCalculated) {
+    if (isOperator(value)) {
+      isCalculated = false;
+    } else {
+      currentInput = '';
+      isCalculated = false;
+    }
+  }
+
+  if (isOperator(value) && isOperator(currentInput.slice(-1))) {
+    currentInput = currentInput.slice(0, -1) + value;
+  } else {
+    currentInput += value;
+  }
+
+  if (value === '.') {
+    const tokens = currentInput.split(/[\+\-\*\/\(\)]/);
+    const last = tokens[tokens.length - 1];
+    if ((last.match(/\./g) || []).length > 1) {
+      currentInput = currentInput.slice(0, -1);
+    }
+  }
+  updateScreen();
+}
+
+function calculateResult(){
+  if (currentInput === '' || isOperator(currentInput.slice(-1))) return;
+  try {
+    result = eval(currentInput);
+    if (typeof result === 'number' && Number.isFinite(result)) {
+      result = (Math.abs(result - Math.round(result)) < 1e-12) ? Math.round(result) : result;
+    }
+    currentInput = String(result);
+    isCalculated = true;
+    updateScreen();
+  } catch (e){
+    currentInput = '';
+    screen.textContent = 'Error';
+    isCalculated = false;
+    requestAnimationFrame(()=> screen.scrollTop = screen.scrollHeight);
+  }
+}
+
+function clearScreen(){
+  currentInput = '';
+  result = null;
+  isCalculated = false;
+  updateScreen();
+}
+
+document.addEventListener('keydown', (ev) => {
+  const k = ev.key;
+  if (/[0-9]/.test(k) || ['+','-','*','/','.','(',')'].includes(k)) {
+    appendToScreen(k); ev.preventDefault();
+  } else if (k === 'Enter' || k === '=') {
+    calculateResult(); ev.preventDefault();
+  } else if (k === 'Backspace') {
+    currentInput = currentInput.slice(0, -1); updateScreen(); ev.preventDefault();
+  } else if (k.toLowerCase() === 'c' || k === 'Escape') {
+    clearScreen(); ev.preventDefault();
+  }
+});
+
+function updateScreen(){
+  screen.textContent = currentInput || '0';
+  const cs = getComputedStyle(screen);
+  const paddingTop = parseFloat(cs.paddingTop) || 0;
+  const paddingBottom = parseFloat(cs.paddingBottom) || 0;
+  const verticalPadding = paddingTop + paddingBottom;
+
+  let lineHeightPx = cs.lineHeight;
+  if (lineHeightPx === 'normal' || isNaN(parseFloat(lineHeightPx))) {
+    const fs = parseFloat(cs.fontSize) || 16;
+    const mult = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-mult')) || 1.2;
+    lineHeightPx = fs * mult;
+  } else {
+    lineHeightPx = parseFloat(lineHeightPx);
+  }
+
+  const maxAllowed = Math.round(lineHeightPx * 3 + verticalPadding);
+  const contentHeight = screen.scrollHeight;
+  const desiredHeight = Math.min(contentHeight, maxAllowed);
+
+  screen.style.maxHeight = desiredHeight + 'px';
+
+  if (contentHeight > desiredHeight) {
+    requestAnimationFrame(() => { screen.scrollTop = screen.scrollHeight; });
+  } else {
+    screen.scrollTop = 0;
+  }
+}
+
+createButtons();
+updateScreen();
+window.addEventListener('resize', () => {
+  clearTimeout(window._calcResizeTimer);
+  window._calcResizeTimer = setTimeout(updateScreen, 120);
+});
+
+/* ========== LYDER ========== */
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+function playBeep(freq=440, duration=0.08, type='sine', volume=0.2) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+function hoverSound() { playBeep(250, 0.05, 'sine', 0.04); }
+function clickSound() { playBeep(180, 0.1, 'sine', 0.08); }
+
+function enableButtonSounds() {
+  document.querySelectorAll('.button').forEach(btn => {
+    btn.addEventListener('mouseenter', hoverSound);
+    btn.addEventListener('click', clickSound);
+  });
+}
+enableButtonSounds();
+</script>
+</body>
+</html>
